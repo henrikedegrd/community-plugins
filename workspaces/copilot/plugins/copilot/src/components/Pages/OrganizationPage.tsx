@@ -23,6 +23,9 @@ import { LanguageCharts, DashboardCharts } from '../Charts';
 import { CopilotPage } from './CopilotPage';
 import { SelectTeamFilter } from '../Filters';
 import { configApiRef, useApi } from '@backstage/core-plugin-api';
+import { EngagementCharts } from '../Charts/EngagementCharts';
+import { Usage } from '../Metrics/Usage';
+import { EngagementCards } from '../Cards/EngagementCards';
 
 export const OrganizationPage = (): React.JSX.Element => {
   const navigate = useNavigate();
@@ -54,6 +57,13 @@ export const OrganizationPage = (): React.JSX.Element => {
             Filters={SelectTeamFilter}
             Cards={LanguageCards}
             Charts={LanguageCharts}
+          />
+        </CardTab>
+        <CardTab label="Engagement">
+          <Usage
+            Filters={SelectTeamFilter}
+            Cards={EngagementCards}
+            Charts={EngagementCharts}
           />
         </CardTab>
       </TabbedCard>
