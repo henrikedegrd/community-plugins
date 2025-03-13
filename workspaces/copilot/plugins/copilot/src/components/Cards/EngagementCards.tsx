@@ -279,62 +279,70 @@ export const EngagementCards = ({
           )}
         />
       </CardBox>
-      <CardBox>
-        <Card
-          team={team}
-          title="Avg. IDE Completions Users"
-          primaryValue={avgIdeCompletionsUsers}
-          secondaryValue={secondaryIdeCompletionsUsers}
-          startDate={startDate}
-          endDate={endDate}
-          rangeSuffix="(Excluding weekends)"
-          icon={() => (
-            <CheckCircleIcon style={{ color: '#4CAF50' }} fontSize="large" />
-          )}
-        />
-      </CardBox>
-      <CardBox>
-        <Card
-          team={team}
-          title="Avg. IDE Chat Users"
-          primaryValue={avgIdeChatUsers}
-          secondaryValue={secondaryIdeChatUsers}
-          startDate={startDate}
-          endDate={endDate}
-          rangeSuffix="(Excluding weekends)"
-          icon={() => (
-            <CheckCircleIcon style={{ color: '#4CAF50' }} fontSize="large" />
-          )}
-        />
-      </CardBox>
-      <CardBox>
-        <Card
-          team={team}
-          title="Avg. Dotcom Chat Users"
-          primaryValue={avgDotcomChatsUsers}
-          secondaryValue={secondaryDotcomChatsUsers}
-          startDate={startDate}
-          endDate={endDate}
-          rangeSuffix="(Excluding weekends)"
-          icon={() => (
-            <CheckCircleIcon style={{ color: '#4CAF50' }} fontSize="large" />
-          )}
-        />
-      </CardBox>
-      <CardBox>
-        <Card
-          team={team}
-          title="Avg. Dotcom PR Users"
-          primaryValue={avgDotcomPrsUsers}
-          secondaryValue={secondaryDotcomPrsUsers}
-          startDate={startDate}
-          endDate={endDate}
-          rangeSuffix="(Excluding weekends)"
-          icon={() => (
-            <CheckCircleIcon style={{ color: '#4CAF50' }} fontSize="large" />
-          )}
-        />
-      </CardBox>
+      <Box
+        display="flex"
+        flexWrap="nowrap"
+        gap={3}
+        justifyContent="space-between"
+        width="100%"
+      >
+        <CardBox>
+          <Card
+            team={team}
+            title="Avg. IDE Completions Users"
+            primaryValue={avgIdeCompletionsUsers}
+            secondaryValue={secondaryIdeCompletionsUsers}
+            startDate={startDate}
+            endDate={endDate}
+            rangeSuffix="(Excluding weekends)"
+            icon={() => (
+              <CheckCircleIcon style={{ color: '#4CAF50' }} fontSize="large" />
+            )}
+          />
+        </CardBox>
+        <CardBox>
+          <Card
+            team={team}
+            title="Avg. IDE Chat Users"
+            primaryValue={avgIdeChatUsers}
+            secondaryValue={secondaryIdeChatUsers}
+            startDate={startDate}
+            endDate={endDate}
+            rangeSuffix="(Excluding weekends)"
+            icon={() => (
+              <CheckCircleIcon style={{ color: '#4CAF50' }} fontSize="large" />
+            )}
+          />
+        </CardBox>
+        <CardBox>
+          <Card
+            team={team}
+            title="Avg. Dotcom Chat Users"
+            primaryValue={avgDotcomChatsUsers}
+            secondaryValue={secondaryDotcomChatsUsers}
+            startDate={startDate}
+            endDate={endDate}
+            rangeSuffix="(Excluding weekends)"
+            icon={() => (
+              <CheckCircleIcon style={{ color: '#4CAF50' }} fontSize="large" />
+            )}
+          />
+        </CardBox>
+        <CardBox>
+          <Card
+            team={team}
+            title="Avg. Dotcom PR Users"
+            primaryValue={avgDotcomPrsUsers}
+            secondaryValue={secondaryDotcomPrsUsers}
+            startDate={startDate}
+            endDate={endDate}
+            rangeSuffix="(Excluding weekends)"
+            icon={() => (
+              <CheckCircleIcon style={{ color: '#4CAF50' }} fontSize="large" />
+            )}
+          />
+        </CardBox>
+      </Box>
     </Box>
   );
 };
