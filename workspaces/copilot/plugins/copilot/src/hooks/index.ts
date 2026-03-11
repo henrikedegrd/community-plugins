@@ -20,3 +20,4 @@ export { usePeriodRange } from './usePeriodRange';
 export { useSetMetricsTypeFromRoute } from './useSetMetricsTypeFromRoute';
 export { useEngagementMetrics } from './useEngagementMetrics';
 export { useEngagementMetricsByTeam } from './useEngagementMetricsByTeam';
+export * from './useV2Metrics';

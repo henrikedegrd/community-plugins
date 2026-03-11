@@ -28,6 +28,7 @@ import {
   SupportAgent as SupportAgentIcon,
   Business as BusinessIcon,
   Group as GroupIcon,
+  AutoGraph as AutoGraphIcon,
 } from '@mui/icons-material';
 
 export const Sidebar = (): JSX.Element => {
@@ -37,20 +38,28 @@ export const Sidebar = (): JSX.Element => {
   const organizationConfig = configApi.getOptionalString(
     'copilot.organization',
   );
+  const organizationsConfig = configApi.getOptionalStringArray(
+    'copilot.organizations',
+  );
 
   const hasEnterprise = !!enterpriseConfig;
   const hasOrganization = !!organizationConfig;
+  const hasOrganizations =
+    !!organizationsConfig && organizationsConfig.length > 0;
+  const hasV2 = hasOrganizations;
   const hasBoth = hasEnterprise && hasOrganization;
+  const hasMultiple = hasBoth || hasV2;
 
   // Determine the direct link path when only one option is configured
   const getDirectPath = () => {
+    if (hasV2) return 'copilot/v2';
     if (hasEnterprise && !hasOrganization) return 'copilot/enterprise';
     if (hasOrganization && !hasEnterprise) return 'copilot/organization';
     return 'copilot';
   };
 
   // If only one option is configured (or none), show a simple sidebar item without submenu
-  if (!hasBoth) {
+  if (!hasMultiple) {
     return (
       <SidebarItem
         icon={SupportAgentIcon as IconComponent}
@@ -60,7 +69,7 @@ export const Sidebar = (): JSX.Element => {
     );
   }
 
-  // If both are configured, show the submenu
+  // If multiple options are configured, show the submenu
   return (
     <SidebarItem
       icon={SupportAgentIcon as IconComponent}
@@ -68,16 +77,27 @@ export const Sidebar = (): JSX.Element => {
       text="Copilot"
     >
       <SidebarSubmenu title="Copilot">
-        <SidebarSubmenuItem
-          title="Enterprise"
-          to="copilot/enterprise"
-          icon={BusinessIcon as IconComponent}
-        />
-        <SidebarSubmenuItem
-          title="Organization"
-          to="copilot/organization"
-          icon={GroupIcon as IconComponent}
-        />
+        {hasV2 && (
+          <SidebarSubmenuItem
+            title="New Metrics"
+            to="copilot/v2"
+            icon={AutoGraphIcon as IconComponent}
+          />
+        )}
+        {hasEnterprise && (
+          <SidebarSubmenuItem
+            title="Enterprise (Legacy)"
+            to="copilot/enterprise"
+            icon={BusinessIcon as IconComponent}
+          />
+        )}
+        {hasOrganization && (
+          <SidebarSubmenuItem
+            title="Organization (Legacy)"
+            to="copilot/organization"
+            icon={GroupIcon as IconComponent}
+          />
+        )}
       </SidebarSubmenu>
     </SidebarItem>
   );

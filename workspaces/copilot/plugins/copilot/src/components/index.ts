@@ -13,4 +13,4 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-export { CopilotIndexPage } from './Pages';
+export { CopilotIndexPage, CopilotV2Page } from './Pages';

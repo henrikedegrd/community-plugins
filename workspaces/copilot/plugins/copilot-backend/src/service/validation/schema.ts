@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 import { z } from 'zod';
-import { MetricsType } from '@backstage-community/plugin-copilot-common';
+import {
+  MetricsType,
+  MetricsV2EntityType,
+} from '@backstage-community/plugin-copilot-common';
 
 const metricsTypeSchema = z.enum(['enterprise', 'organization']);
 
@@ -54,4 +57,72 @@ export const teamQuerySchema = z.object({
   startDate: isoDateSchema,
   endDate: isoDateSchema,
   type: metricsTypeSchema,
+});
+
+// ============================================================================
+// V2 Metrics Query Schemas (New API - post April 2026)
+// ============================================================================
+
+const metricsV2EntityTypeSchema = z.enum(['enterprise', 'organization']);
+
+export type MetricsV2Query = {
+  startDate: string;
+  endDate: string;
+  type: MetricsV2EntityType;
+  entityName: string;
+};
+
+export type MetricsV2ByFeatureQuery = MetricsV2Query & {
+  feature?: string;
+};
+
+export type MetricsV2ByLanguageQuery = MetricsV2Query & {
+  language?: string;
+  feature?: string;
+};
+
+export type MetricsV2ByModelQuery = MetricsV2Query & {
+  model?: string;
+  language?: string;
+};
+
+export type MetricsV2ByModelFeatureQuery = MetricsV2Query & {
+  model?: string;
+  feature?: string;
+};
+
+export type MetricsV2PeriodRangeQuery = {
+  type: MetricsV2EntityType;
+  entityName: string;
+};
+
+export const metricsV2QuerySchema = z.object({
+  startDate: isoDateSchema,
+  endDate: isoDateSchema,
+  type: metricsV2EntityTypeSchema,
+  entityName: z.string().min(1),
+});
+
+export const metricsV2ByFeatureQuerySchema = metricsV2QuerySchema.extend({
+  feature: z.string().optional(),
+});
+
+export const metricsV2ByLanguageQuerySchema = metricsV2QuerySchema.extend({
+  language: z.string().optional(),
+  feature: z.string().optional(),
+});
+
+export const metricsV2ByModelQuerySchema = metricsV2QuerySchema.extend({
+  model: z.string().optional(),
+  language: z.string().optional(),
+});
+
+export const metricsV2ByModelFeatureQuerySchema = metricsV2QuerySchema.extend({
+  model: z.string().optional(),
+  feature: z.string().optional(),
+});
+
+export const metricsV2PeriodRangeQuerySchema = z.object({
+  type: metricsV2EntityTypeSchema,
+  entityName: z.string().min(1),
 });

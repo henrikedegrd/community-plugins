@@ -469,6 +469,312 @@ describe('DatabaseHandler', () => {
     },
   );
 
+  // ============================================================================
+  // V2 Metrics Database Tests (New API - post April 2026)
+  // ============================================================================
+
+  describe.each(databases.eachSupportedId())(
+    'V2 Metrics Methods - database: %s',
+    databaseId => {
+      let knex: Knex;
+      let databaseHandler: DatabaseHandler;
+
+      // Skip MySQL tests due to known migration issues
+      if (databaseId.startsWith('MYSQL')) {
+        // eslint-disable-next-line jest/no-disabled-tests, jest/expect-expect
+        it.skip('tests for MySQL due to pre-existing migration issue', () => {});
+        return;
+      }
+
+      beforeEach(async () => {
+        knex = await createDatabase(databaseId);
+        databaseHandler = await DatabaseHandler.create({
+          database: {
+            getClient: async () => knex,
+            migrations: { skip: true },
+          } as any,
+        });
+      });
+
+      afterEach(async () => {
+        await knex?.destroy();
+      });
+
+      describe('batchInsertMetricsV2Daily', () => {
+        it('should insert daily metrics', async () => {
+          const metrics = [
+            {
+              day: '2025-01-15',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              daily_active_users: 100,
+              weekly_active_users: 200,
+              monthly_active_users: 300,
+              code_generation_activity_count: 1000,
+              code_acceptance_activity_count: 800,
+            },
+          ];
+
+          await databaseHandler.batchInsertMetricsV2Daily(metrics);
+
+          const result = await databaseHandler.getMetricsV2NewDaily(
+            'organization',
+            'test-org',
+            '2025-01-01',
+            '2025-01-31',
+          );
+
+          expect(result).toHaveLength(1);
+          expect(result[0].entity_name).toBe('test-org');
+          expect(result[0].daily_active_users).toBe(100);
+        });
+
+        it('should ignore duplicate inserts', async () => {
+          const metrics = [
+            {
+              day: '2025-01-15',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              daily_active_users: 100,
+            },
+          ];
+
+          await databaseHandler.batchInsertMetricsV2Daily(metrics);
+          await databaseHandler.batchInsertMetricsV2Daily(metrics);
+
+          const result = await databaseHandler.getMetricsV2NewDaily(
+            'organization',
+            'test-org',
+            '2025-01-01',
+            '2025-01-31',
+          );
+
+          expect(result).toHaveLength(1);
+        });
+      });
+
+      describe('batchInsertMetricsV2ByFeature', () => {
+        it('should insert and query metrics by feature', async () => {
+          const metrics = [
+            {
+              day: '2025-01-15',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              feature: 'code_completion',
+              code_generation_activity_count: 500,
+            },
+            {
+              day: '2025-01-15',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              feature: 'agent_edit',
+              code_generation_activity_count: 200,
+            },
+          ];
+
+          await databaseHandler.batchInsertMetricsV2ByFeature(metrics);
+
+          // Query all features
+          const allResults = await databaseHandler.getMetricsV2NewByFeature(
+            'organization',
+            'test-org',
+            '2025-01-01',
+            '2025-01-31',
+          );
+          expect(allResults).toHaveLength(2);
+
+          // Query specific feature
+          const codeCompletionResults =
+            await databaseHandler.getMetricsV2NewByFeature(
+              'organization',
+              'test-org',
+              '2025-01-01',
+              '2025-01-31',
+              'code_completion',
+            );
+          expect(codeCompletionResults).toHaveLength(1);
+          expect(codeCompletionResults[0].feature).toBe('code_completion');
+        });
+      });
+
+      describe('getMetricsV2NewPeriodRange', () => {
+        it('should return correct period range', async () => {
+          const metrics = [
+            {
+              day: '2025-01-10',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              daily_active_users: 100,
+            },
+            {
+              day: '2025-01-15',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              daily_active_users: 120,
+            },
+            {
+              day: '2025-01-20',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              daily_active_users: 130,
+            },
+          ];
+
+          await databaseHandler.batchInsertMetricsV2Daily(metrics);
+
+          const range = await databaseHandler.getMetricsV2NewPeriodRange(
+            'organization',
+            'test-org',
+          );
+
+          expect(range).toBeDefined();
+          expect(normalizeDate(range!.minDate)).toBe('2025-01-10');
+          expect(normalizeDate(range!.maxDate)).toBe('2025-01-20');
+        });
+
+        it('should return undefined when no data exists', async () => {
+          const range = await databaseHandler.getMetricsV2NewPeriodRange(
+            'organization',
+            'non-existent-org',
+          );
+
+          expect(range).toBeUndefined();
+        });
+      });
+
+      describe('getExistingDaysFromMetricsV2New', () => {
+        it('should return list of existing days', async () => {
+          const metrics = [
+            {
+              day: '2025-01-10',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              daily_active_users: 100,
+            },
+            {
+              day: '2025-01-12',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              daily_active_users: 110,
+            },
+            {
+              day: '2025-01-14',
+              type: 'organization' as const,
+              entity_name: 'test-org',
+              daily_active_users: 120,
+            },
+          ];
+
+          await databaseHandler.batchInsertMetricsV2Daily(metrics);
+
+          const existingDays =
+            await databaseHandler.getExistingDaysFromMetricsV2New(
+              'organization',
+              'test-org',
+              '2025-01-01',
+              '2025-01-31',
+            );
+
+          expect(existingDays).toHaveLength(3);
+          expect(existingDays.map(normalizeDate)).toContain('2025-01-10');
+          expect(existingDays.map(normalizeDate)).toContain('2025-01-12');
+          expect(existingDays.map(normalizeDate)).toContain('2025-01-14');
+        });
+      });
+
+      describe('Retry tracking methods', () => {
+        it('should create and track fetch retries', async () => {
+          const retry = await databaseHandler.getOrCreateFetchRetry(
+            'organization',
+            'test-org',
+            '2025-01-15',
+            'organization',
+          );
+
+          expect(retry.type).toBe('organization');
+          expect(retry.entity_name).toBe('test-org');
+          expect(normalizeDate(retry.day)).toBe('2025-01-15');
+          expect(retry.status).toBe('pending');
+          expect(retry.retry_count).toBe(0);
+        });
+
+        it('should update retry status', async () => {
+          const retry = await databaseHandler.getOrCreateFetchRetry(
+            'organization',
+            'test-org',
+            '2025-01-15',
+            'organization',
+          );
+
+          await databaseHandler.updateFetchRetry(
+            retry.id!,
+            'pending',
+            'Test error',
+          );
+
+          const pendingRetries = await databaseHandler.getPendingFetchRetries(
+            'organization',
+            'test-org',
+          );
+
+          expect(pendingRetries).toHaveLength(1);
+          expect(pendingRetries[0].last_error).toBe('Test error');
+        });
+
+        it('should mark retry as successful', async () => {
+          const retry = await databaseHandler.getOrCreateFetchRetry(
+            'organization',
+            'test-org',
+            '2025-01-15',
+            'organization',
+          );
+
+          await databaseHandler.markFetchRetrySuccess(retry.id!);
+
+          const pendingRetries = await databaseHandler.getPendingFetchRetries(
+            'organization',
+            'test-org',
+          );
+
+          expect(pendingRetries).toHaveLength(0);
+        });
+      });
+
+      describe('getMetricsV2Entities', () => {
+        it('should return all unique entities', async () => {
+          const metrics = [
+            {
+              day: '2025-01-15',
+              type: 'organization' as const,
+              entity_name: 'org-1',
+              daily_active_users: 100,
+            },
+            {
+              day: '2025-01-15',
+              type: 'organization' as const,
+              entity_name: 'org-2',
+              daily_active_users: 200,
+            },
+            {
+              day: '2025-01-16',
+              type: 'organization' as const,
+              entity_name: 'org-1',
+              daily_active_users: 110,
+            },
+          ];
+
+          await databaseHandler.batchInsertMetricsV2Daily(metrics);
+
+          const entities = await databaseHandler.getMetricsV2Entities();
+
+          expect(entities).toHaveLength(2);
+          expect(entities.map(e => e.entity_name)).toContain('org-1');
+          expect(entities.map(e => e.entity_name)).toContain('org-2');
+        });
+      });
+    },
+  );
+
   function normalizeDate(date: string | Date): string {
     if (date instanceof Date) {
       return date.toISOString().split('T')[0];

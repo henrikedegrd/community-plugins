@@ -33,6 +33,17 @@ import {
   CopilotChatModels,
   EngagementMetrics,
   SeatAnalysis,
+  MetricsV2EntityType,
+  MetricsV2DailyEntity,
+  MetricsV2ByIdeEntity,
+  MetricsV2ByFeatureEntity,
+  MetricsV2ByLanguageFeatureEntity,
+  MetricsV2ByLanguageModelEntity,
+  MetricsV2ByModelFeatureEntity,
+  MetricsV2UserDailyEntity,
+  MetricsV2FetchRetryEntity,
+  MetricsV2FetchStatus,
+  MetricsV2ReportType,
 } from '@backstage-community/plugin-copilot-common';
 import { Knex } from 'knex';
 
@@ -669,5 +680,445 @@ export class DatabaseHandler {
       .orderBy('cm.day', 'asc');
 
     return await query;
+  }
+
+  // ============================================================================
+  // V2 Metrics Methods (New GitHub Copilot API - post April 2026)
+  // ============================================================================
+
+  /**
+   * Get the period range for V2 metrics (new API).
+   */
+  async getMetricsV2NewPeriodRange(
+    type: MetricsV2EntityType,
+    entityName: string,
+  ): Promise<PeriodRange | undefined> {
+    const query = this.db<MetricsV2DailyEntity>('metrics_v2_daily')
+      .where('type', type)
+      .where('entity_name', entityName);
+
+    const minDate = await query.clone().orderBy('day', 'asc').first('day');
+    const maxDate = await query.clone().orderBy('day', 'desc').first('day');
+
+    if (!minDate?.day || !maxDate?.day) return undefined;
+
+    return { minDate: minDate.day, maxDate: maxDate.day };
+  }
+
+  /**
+   * Get the most recent day from V2 daily metrics.
+   */
+  async getMostRecentDayFromMetricsV2New(
+    type: MetricsV2EntityType,
+    entityName: string,
+  ): Promise<string | undefined> {
+    try {
+      const result = await this.db<MetricsV2DailyEntity>('metrics_v2_daily')
+        .where('type', type)
+        .where('entity_name', entityName)
+        .orderBy('day', 'desc')
+        .first('day');
+      return result?.day;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Get all existing days from V2 daily metrics (for gap detection).
+   */
+  async getExistingDaysFromMetricsV2New(
+    type: MetricsV2EntityType,
+    entityName: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<string[]> {
+    const results = await this.db<MetricsV2DailyEntity>('metrics_v2_daily')
+      .where('type', type)
+      .where('entity_name', entityName)
+      .whereBetween('day', [startDate, endDate])
+      .select('day');
+
+    return results.map(r => r.day);
+  }
+
+  /**
+   * Batch insert V2 daily metrics.
+   */
+  async batchInsertMetricsV2Daily(
+    metrics: MetricsV2DailyEntity[],
+  ): Promise<void> {
+    if (metrics.length === 0) return;
+
+    await this.db<MetricsV2DailyEntity>('metrics_v2_daily')
+      .insert(metrics)
+      .onConflict(['day', 'type', 'entity_name'])
+      .ignore();
+  }
+
+  /**
+   * Batch insert V2 metrics by IDE.
+   */
+  async batchInsertMetricsV2ByIde(
+    metrics: MetricsV2ByIdeEntity[],
+  ): Promise<void> {
+    if (metrics.length === 0) return;
+
+    await this.db<MetricsV2ByIdeEntity>('metrics_v2_by_ide')
+      .insert(metrics)
+      .onConflict(['day', 'type', 'entity_name', 'ide'])
+      .ignore();
+  }
+
+  /**
+   * Batch insert V2 metrics by feature.
+   */
+  async batchInsertMetricsV2ByFeature(
+    metrics: MetricsV2ByFeatureEntity[],
+  ): Promise<void> {
+    if (metrics.length === 0) return;
+
+    await this.db<MetricsV2ByFeatureEntity>('metrics_v2_by_feature')
+      .insert(metrics)
+      .onConflict(['day', 'type', 'entity_name', 'feature'])
+      .ignore();
+  }
+
+  /**
+   * Batch insert V2 metrics by language and feature.
+   */
+  async batchInsertMetricsV2ByLanguageFeature(
+    metrics: MetricsV2ByLanguageFeatureEntity[],
+  ): Promise<void> {
+    if (metrics.length === 0) return;
+
+    await this.db<MetricsV2ByLanguageFeatureEntity>(
+      'metrics_v2_by_language_feature',
+    )
+      .insert(metrics)
+      .onConflict(['day', 'type', 'entity_name', 'language', 'feature'])
+      .ignore();
+  }
+
+  /**
+   * Batch insert V2 metrics by language and model.
+   */
+  async batchInsertMetricsV2ByLanguageModel(
+    metrics: MetricsV2ByLanguageModelEntity[],
+  ): Promise<void> {
+    if (metrics.length === 0) return;
+
+    await this.db<MetricsV2ByLanguageModelEntity>(
+      'metrics_v2_by_language_model',
+    )
+      .insert(metrics)
+      .onConflict(['day', 'type', 'entity_name', 'language', 'model'])
+      .ignore();
+  }
+
+  /**
+   * Batch insert V2 metrics by model and feature.
+   */
+  async batchInsertMetricsV2ByModelFeature(
+    metrics: MetricsV2ByModelFeatureEntity[],
+  ): Promise<void> {
+    if (metrics.length === 0) return;
+
+    await this.db<MetricsV2ByModelFeatureEntity>('metrics_v2_by_model_feature')
+      .insert(metrics)
+      .onConflict(['day', 'type', 'entity_name', 'model', 'feature'])
+      .ignore();
+  }
+
+  /**
+   * Batch insert V2 user daily metrics.
+   */
+  async batchInsertMetricsV2UserDaily(
+    metrics: MetricsV2UserDailyEntity[],
+  ): Promise<void> {
+    if (metrics.length === 0) return;
+
+    await this.db<MetricsV2UserDailyEntity>('metrics_v2_user_daily')
+      .insert(metrics)
+      .onConflict(['day', 'type', 'entity_name', 'user_hash'])
+      .ignore();
+  }
+
+  /**
+   * Get V2 daily metrics for a date range.
+   */
+  async getMetricsV2NewDaily(
+    type: MetricsV2EntityType,
+    entityName: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<MetricsV2DailyEntity[]> {
+    return await this.db<MetricsV2DailyEntity>('metrics_v2_daily')
+      .where('type', type)
+      .where('entity_name', entityName)
+      .whereBetween('day', [startDate, endDate])
+      .orderBy('day', 'asc');
+  }
+
+  /**
+   * Get V2 metrics by IDE for a date range.
+   */
+  async getMetricsV2NewByIde(
+    type: MetricsV2EntityType,
+    entityName: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<MetricsV2ByIdeEntity[]> {
+    return await this.db<MetricsV2ByIdeEntity>('metrics_v2_by_ide')
+      .where('type', type)
+      .where('entity_name', entityName)
+      .whereBetween('day', [startDate, endDate])
+      .orderBy('day', 'asc');
+  }
+
+  /**
+   * Get V2 metrics by feature for a date range.
+   */
+  async getMetricsV2NewByFeature(
+    type: MetricsV2EntityType,
+    entityName: string,
+    startDate: string,
+    endDate: string,
+    feature?: string,
+  ): Promise<MetricsV2ByFeatureEntity[]> {
+    let query = this.db<MetricsV2ByFeatureEntity>('metrics_v2_by_feature')
+      .where('type', type)
+      .where('entity_name', entityName)
+      .whereBetween('day', [startDate, endDate]);
+
+    if (feature) {
+      query = query.where('feature', feature);
+    }
+
+    return await query.orderBy('day', 'asc');
+  }
+
+  /**
+   * Get V2 metrics by language and feature for a date range.
+   */
+  async getMetricsV2NewByLanguageFeature(
+    type: MetricsV2EntityType,
+    entityName: string,
+    startDate: string,
+    endDate: string,
+    language?: string,
+    feature?: string,
+  ): Promise<MetricsV2ByLanguageFeatureEntity[]> {
+    let query = this.db<MetricsV2ByLanguageFeatureEntity>(
+      'metrics_v2_by_language_feature',
+    )
+      .where('type', type)
+      .where('entity_name', entityName)
+      .whereBetween('day', [startDate, endDate]);
+
+    if (language) {
+      query = query.where('language', language);
+    }
+    if (feature) {
+      query = query.where('feature', feature);
+    }
+
+    return await query.orderBy('day', 'asc');
+  }
+
+  /**
+   * Get V2 metrics by language and model for a date range.
+   */
+  async getMetricsV2NewByLanguageModel(
+    type: MetricsV2EntityType,
+    entityName: string,
+    startDate: string,
+    endDate: string,
+    language?: string,
+    model?: string,
+  ): Promise<MetricsV2ByLanguageModelEntity[]> {
+    let query = this.db<MetricsV2ByLanguageModelEntity>(
+      'metrics_v2_by_language_model',
+    )
+      .where('type', type)
+      .where('entity_name', entityName)
+      .whereBetween('day', [startDate, endDate]);
+
+    if (language) {
+      query = query.where('language', language);
+    }
+    if (model) {
+      query = query.where('model', model);
+    }
+
+    return await query.orderBy('day', 'asc');
+  }
+
+  /**
+   * Get V2 metrics by model and feature for a date range.
+   */
+  async getMetricsV2NewByModelFeature(
+    type: MetricsV2EntityType,
+    entityName: string,
+    startDate: string,
+    endDate: string,
+    model?: string,
+    feature?: string,
+  ): Promise<MetricsV2ByModelFeatureEntity[]> {
+    let query = this.db<MetricsV2ByModelFeatureEntity>(
+      'metrics_v2_by_model_feature',
+    )
+      .where('type', type)
+      .where('entity_name', entityName)
+      .whereBetween('day', [startDate, endDate]);
+
+    if (model) {
+      query = query.where('model', model);
+    }
+    if (feature) {
+      query = query.where('feature', feature);
+    }
+
+    return await query.orderBy('day', 'asc');
+  }
+
+  /**
+   * Get V2 user daily metrics for a date range.
+   */
+  async getMetricsV2NewUserDaily(
+    type: MetricsV2EntityType,
+    entityName: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<MetricsV2UserDailyEntity[]> {
+    return await this.db<MetricsV2UserDailyEntity>('metrics_v2_user_daily')
+      .where('type', type)
+      .where('entity_name', entityName)
+      .whereBetween('day', [startDate, endDate])
+      .orderBy('day', 'asc');
+  }
+
+  // ============================================================================
+  // V2 Retry Tracking Methods
+  // ============================================================================
+
+  /**
+   * Get or create a fetch retry record.
+   */
+  async getOrCreateFetchRetry(
+    type: MetricsV2EntityType,
+    entityName: string,
+    day: string,
+    reportType: MetricsV2ReportType,
+  ): Promise<MetricsV2FetchRetryEntity> {
+    // Try to find existing record
+    const existing = await this.db<MetricsV2FetchRetryEntity>(
+      'metrics_v2_fetch_retries',
+    )
+      .where({ type, entity_name: entityName, day, report_type: reportType })
+      .first();
+
+    if (existing) {
+      return existing;
+    }
+
+    // Create new record
+    const newRecord: MetricsV2FetchRetryEntity = {
+      type,
+      entity_name: entityName,
+      day,
+      report_type: reportType,
+      retry_count: 0,
+      status: 'pending',
+    };
+
+    await this.db<MetricsV2FetchRetryEntity>('metrics_v2_fetch_retries')
+      .insert(newRecord)
+      .onConflict(['type', 'entity_name', 'day', 'report_type'])
+      .ignore();
+
+    // Return the record (may have been created by concurrent process)
+    const result = await this.db<MetricsV2FetchRetryEntity>(
+      'metrics_v2_fetch_retries',
+    )
+      .where({ type, entity_name: entityName, day, report_type: reportType })
+      .first();
+
+    return result!;
+  }
+
+  /**
+   * Update a fetch retry record after an attempt.
+   */
+  async updateFetchRetry(
+    id: number,
+    status: MetricsV2FetchStatus,
+    error?: string,
+  ): Promise<void> {
+    await this.db<MetricsV2FetchRetryEntity>('metrics_v2_fetch_retries')
+      .where({ id })
+      .update({
+        status,
+        last_error: error,
+        last_attempt_at: this.db.fn.now() as unknown as string,
+        retry_count: this.db.raw('retry_count + 1'),
+      });
+  }
+
+  /**
+   * Get pending retries for a given entity.
+   */
+  async getPendingFetchRetries(
+    type: MetricsV2EntityType,
+    entityName: string,
+    maxRetries: number = 4,
+  ): Promise<MetricsV2FetchRetryEntity[]> {
+    return await this.db<MetricsV2FetchRetryEntity>('metrics_v2_fetch_retries')
+      .where('type', type)
+      .where('entity_name', entityName)
+      .where('status', 'pending')
+      .where('retry_count', '<', maxRetries)
+      .orderBy('day', 'asc');
+  }
+
+  /**
+   * Mark a fetch retry as permanently failed.
+   */
+  async markFetchRetryFailed(id: number, error: string): Promise<void> {
+    await this.db<MetricsV2FetchRetryEntity>('metrics_v2_fetch_retries')
+      .where({ id })
+      .update({
+        status: 'failed',
+        last_error: error,
+        last_attempt_at: this.db.fn.now() as unknown as string,
+      });
+  }
+
+  /**
+   * Mark a fetch retry as successful.
+   */
+  async markFetchRetrySuccess(id: number): Promise<void> {
+    await this.db<MetricsV2FetchRetryEntity>('metrics_v2_fetch_retries')
+      .where({ id })
+      .update({
+        status: 'success',
+        last_attempt_at: this.db.fn.now() as unknown as string,
+      });
+  }
+
+  /**
+   * Get all entities that have V2 metrics data.
+   */
+  async getMetricsV2Entities(): Promise<
+    Array<{ type: MetricsV2EntityType; entity_name: string }>
+  > {
+    const results = await this.db<MetricsV2DailyEntity>('metrics_v2_daily')
+      .distinct('type', 'entity_name')
+      .orderBy('entity_name', 'asc');
+
+    return results.map(r => ({
+      type: r.type,
+      entity_name: r.entity_name,
+    }));
   }
 }

@@ -21,11 +21,17 @@ import {
   discoveryApiRef,
   fetchApiRef,
 } from '@backstage/core-plugin-api';
-import { CopilotClient, copilotApiRef } from './api';
+import {
+  CopilotClient,
+  copilotApiRef,
+  CopilotClientV2,
+  copilotV2ApiRef,
+} from './api';
 import {
   copilotRouteRef,
   enterpriseRouteRef,
   organizationRouteRef,
+  v2RouteRef,
 } from './routes';
 
 /**
@@ -45,11 +51,21 @@ export const copilotPlugin = createPlugin({
       factory: ({ discoveryApi, fetchApi }) =>
         new CopilotClient({ discoveryApi, fetchApi }),
     }),
+    createApiFactory({
+      api: copilotV2ApiRef,
+      deps: {
+        discoveryApi: discoveryApiRef,
+        fetchApi: fetchApiRef,
+      },
+      factory: ({ discoveryApi, fetchApi }) =>
+        new CopilotClientV2({ discoveryApi, fetchApi }),
+    }),
   ],
   routes: {
     copilot: copilotRouteRef,
     enterprise: enterpriseRouteRef,
     organization: organizationRouteRef,
+    v2: v2RouteRef,
   },
 });
 
@@ -77,5 +93,18 @@ export const CopilotSidebar = copilotPlugin.provide(
     component: {
       lazy: () => import('./components/Sidebar').then(m => m.Sidebar),
     },
+  }),
+);
+
+/**
+ * CopilotV2Page component for the new V2 metrics.
+ *
+ * @public
+ */
+export const CopilotV2Page = copilotPlugin.provide(
+  createRoutableExtension({
+    name: 'CopilotV2Page',
+    component: () => import('./components/Pages').then(m => m.CopilotV2Page),
+    mountPoint: v2RouteRef,
   }),
 );

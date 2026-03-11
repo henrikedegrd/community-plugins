@@ -31,12 +31,29 @@ export interface Config {
      */
     enterprise?: string;
     /**
-     * The name of the GitHub organization.
+     * The name of the GitHub organization (legacy single org config).
      */
     organization?: string;
     /**
      * The host for GitHub Copilot integration.
      */
     host: string;
+    /**
+     * List of GitHub organizations to fetch V2 metrics for.
+     * When present, enables the new V2 metrics API (post April 2026).
+     */
+    organizations?: string[];
+    /**
+     * Whether to collect user-level metrics for adoption analysis.
+     * Defaults to false for privacy. User IDs are hashed before storage.
+     * @visibility frontend
+     */
+    collectUserMetrics?: boolean;
+    /**
+     * Salt for hashing user IDs. If not provided, a random salt will be
+     * generated on first run and stored. Should be kept secret.
+     * @visibility secret
+     */
+    userHashSalt?: string;
   };
 }

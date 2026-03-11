@@ -24,3 +24,11 @@ export {
   useSharedShowOverall,
   SharedShowOverallProvider,
 } from './SharedShowOverallContext';
+
+export {
+  V2EntityProvider,
+  V2DateRangeProvider,
+  V2MetricsProvider,
+  useV2Entity,
+  useV2DateRange,
+} from './V2Context';

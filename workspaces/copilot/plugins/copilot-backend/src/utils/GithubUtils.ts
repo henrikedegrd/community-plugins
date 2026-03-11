@@ -32,6 +32,27 @@ export type CopilotConfig = {
   apiBaseUrl: string;
 };
 
+/**
+ * Extended configuration for V2 metrics API (post April 2026).
+ */
+export type CopilotV2Config = CopilotConfig & {
+  organizations: string[];
+  collectUserMetrics: boolean;
+  userHashSalt?: string;
+};
+
+/**
+ * Legacy API cutoff date. After this date, the legacy metrics API will no longer work.
+ */
+export const LEGACY_API_CUTOFF_DATE = new Date('2026-04-02');
+
+/**
+ * Check if the legacy metrics API should still be used.
+ */
+export function shouldFetchLegacyMetrics(): boolean {
+  return new Date() < LEGACY_API_CUTOFF_DATE;
+}
+
 export const getCopilotConfig = (config: Config): CopilotConfig => {
   const host = config.getString('copilot.host');
   const enterprise = config.getOptionalString('copilot.enterprise');
@@ -133,4 +154,100 @@ export const getGithubCredentials = async (
   }
 
   return credentials;
+};
+
+/**
+ * Get V2 configuration for the new GitHub Copilot metrics API.
+ * V2 config is only valid when organizations array is present.
+ */
+export const getCopilotV2Config = (config: Config): CopilotV2Config | null => {
+  const organizations = config.getOptionalStringArray('copilot.organizations');
+
+  // V2 config only applies when organizations array is configured
+  if (!organizations || organizations.length === 0) {
+    return null;
+  }
+
+  const host = config.getString('copilot.host');
+  const enterprise = config.getOptionalString('copilot.enterprise');
+  const organization = config.getOptionalString('copilot.organization');
+  const collectUserMetrics =
+    config.getOptionalBoolean('copilot.collectUserMetrics') ?? false;
+  const userHashSalt = config.getOptionalString('copilot.userHashSalt');
+
+  const integrations = ScmIntegrations.fromConfig(config);
+  const githubConfig = integrations.github.byHost(host)?.config;
+
+  if (!githubConfig) {
+    throw new Error(
+      `GitHub configuration for host "${host}" is missing or incomplete. Please check the integrations configuration section.`,
+    );
+  }
+
+  // Validate that we have credentials for the organizations
+  for (const org of organizations) {
+    const hasToken = !!githubConfig.token;
+    const hasApp = githubConfig.apps && githubConfig.apps.length > 0;
+
+    if (!hasToken && !hasApp) {
+      throw new Error(
+        `No token or GitHub App configured for organization "${org}" at host "${host}".`,
+      );
+    }
+  }
+
+  return {
+    host,
+    enterprise,
+    organization,
+    apiBaseUrl: githubConfig.apiBaseUrl ?? 'https://api.github.com',
+    organizations,
+    collectUserMetrics,
+    userHashSalt,
+  };
+};
+
+/**
+ * Get credentials for a specific organization (for V2 multi-org support).
+ */
+export const getOrganizationCredentials = async (
+  config: Config,
+  host: string,
+  organization: string,
+): Promise<OctokitAuthStrategy> => {
+  const integrations = ScmIntegrations.fromConfig(config);
+  const githubConfig = integrations.github.byHost(host)?.config;
+
+  if (!githubConfig) {
+    throw new Error(
+      `GitHub configuration for host "${host}" is missing or incomplete.`,
+    );
+  }
+
+  if (githubConfig.apps && githubConfig.apps.length > 0) {
+    const orgLowerCase = organization.toLowerCase();
+    const allowedApp = githubConfig.apps.find(
+      app =>
+        !app.allowedInstallationOwners ||
+        app.allowedInstallationOwners.length === 0 ||
+        app.allowedInstallationOwners.some(
+          owner => owner.toLowerCase() === orgLowerCase,
+        ),
+    );
+
+    if (allowedApp) {
+      return {
+        appId: allowedApp.appId,
+        privateKey: allowedApp.privateKey,
+      };
+    }
+  }
+
+  if (githubConfig.token) {
+    return githubConfig.token;
+  }
+
+  throw new Error(
+    `No credentials available for organization "${organization}" at host "${host}".`,
+  );
 };

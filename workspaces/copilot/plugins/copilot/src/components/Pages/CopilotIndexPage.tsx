@@ -17,11 +17,13 @@ import { Routes, Route } from 'react-router';
 import { HomePage } from './HomePage';
 import { EnterprisePage } from './EnterprisePage';
 import { OrganizationPage } from './OrganizationPage';
+import { CopilotV2Page } from './CopilotV2Page';
 
 export const CopilotIndexPage = () => (
   <Routes>
     <Route path="/" element={<HomePage />} />
     <Route path="/enterprise" element={<EnterprisePage />} />
     <Route path="/organization" element={<OrganizationPage />} />
+    <Route path="/v2" element={<CopilotV2Page />} />
   </Routes>
 );

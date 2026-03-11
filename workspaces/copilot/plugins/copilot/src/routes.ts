@@ -30,3 +30,9 @@ export const organizationRouteRef = createSubRouteRef({
   parent: copilotRouteRef,
   path: '/organization',
 });
+
+export const v2RouteRef = createSubRouteRef({
+  id: 'v2-dashboard',
+  parent: copilotRouteRef,
+  path: '/v2',
+});

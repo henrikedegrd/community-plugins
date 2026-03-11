@@ -22,7 +22,6 @@ import {
   TeamInfo,
 } from '@backstage-community/plugin-copilot-common';
 import { Octokit } from '@octokit/rest';
-import { createAppAuth } from '@octokit/auth-app';
 import {
   CopilotConfig,
   CopilotCredentials,
@@ -104,6 +103,9 @@ export class GithubClient implements GithubApi {
 
       // For GitHub Apps, we need to get the installation ID first
       // Create a temporary app-authenticated Octokit to get the installation ID
+      // Dynamic import for ES Module
+      const { createAppAuth } = await import('@octokit/auth-app');
+
       const appOctokit = new Octokit({
         authStrategy: createAppAuth,
         auth: {
